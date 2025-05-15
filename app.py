@@ -5,7 +5,7 @@ import plotly.express as px
 st.set_page_config(page_title="Análisis de Mortalidad 2019", layout="wide")
 st.title("📊 Análisis de Mortalidad en Colombia - Año 2019")
 
-# === Cargar datos ===
+# === Cargar base unificada ===
 archivo = "Base_Unificada_Limpia_Completa.xlsx"
 
 @st.cache_data
@@ -20,7 +20,7 @@ df = cargar_datos()
 if df.empty:
     st.stop()
 
-# === Filtrar por año 2019 ===
+# === Filtrar solo año 2019 ===
 df = df[df["AÑO"] == 2019]
 
 # === Mapa de burbujas ===
@@ -74,13 +74,8 @@ if "Nombre_capitulo" in df.columns:
 else:
     st.warning("⚠️ La columna 'Nombre_capitulo' no está disponible para mostrar causas.")
 
-# === Histograma mejorado por edad ===
-st.header("📊 Distribución de muertes por grupos quinquenales de edad")
-orden_edad = [
-    "0-4", "5-9", "10-14", "15-19", "20-24", "25-29", "30-34", "35-39",
-    "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "70-74", "75-79",
-    "80-84", "85+"
-]
+# === Histograma por edad corregido ===
+st.header("📊 Distribución de muertes según grupos quinquenales de edad")
 edad_map = {
     "0 a 4": "0-4", "5 a 9": "5-9", "10 a 14": "10-14", "15 a 19": "15-19",
     "20 a 24": "20-24", "25 a 29": "25-29", "30 a 34": "30-34", "35 a 39": "35-39",
@@ -88,24 +83,22 @@ edad_map = {
     "60 a 64": "60-64", "65 a 69": "65-69", "70 a 74": "70-74", "75 a 79": "75-79",
     "80 a 84": "80-84", "85 y más": "85+"
 }
-df["GRUPO_EDAD1"] = df["GRUPO_EDAD1"].replace(edad_map)
-edad_data = df["GRUPO_EDAD1"].value_counts().reindex(orden_edad, fill_value=0).reset_index()
-edad_data.columns = ["Grupo Edad", "Muertes"]
-fig_hist = px.bar(
-    edad_data, x="Grupo Edad", y="Muertes",
-    title="Distribución de muertes según grupos quinquenales de edad",
-    labels={"Grupo Edad": "Rango de Edad", "Muertes": "Número de Muertes"},
-    color="Muertes", color_continuous_scale="Blues"
-)
-fig_hist.update_layout(xaxis_tickangle=-45)
-st.plotly_chart(fig_hist, use_container_width=True)
+df["GRUPO_EDAD1"] = df["GRUPO_EDAD1"].astype(str).str.strip().str.lower()
+edad_map_normalizado = {k.lower(): v for k, v in edad_map.items()}
+df["Edad_Grupo"] = df["GRUPO_EDAD1"].map(edad_map_normalizado)
 
-# === Barras apiladas por sexo ===
-st.header("🚻 Comparación por sexo y departamento")
-sexo_dep = df.groupby(["DEPARTAMENTO", "SEXO"]).size().reset_index(name="Total")
-fig_apiladas = px.bar(sexo_dep, x="DEPARTAMENTO", y="Total", color="SEXO",
-                      title="Muertes por sexo en cada departamento")
-st.plotly_chart(fig_apiladas, use_container_width=True)
+if df["Edad_Grupo"].notna().sum() == 0:
+    st.warning("⚠️ No hay datos válidos que coincidan con los grupos de edad esperados.")
+else:
+    edad_data = df["Edad_Grupo"].value_counts().sort_index().reset_index()
+    edad_data.columns = ["Rango de Edad", "Número de Muertes"]
+    fig_hist = px.bar(
+        edad_data, x="Rango de Edad", y="Número de Muertes",
+        title="Distribución de muertes según grupos quinquenales de edad",
+        text_auto=True, color="Número de Muertes", color_continuous_scale="Blues"
+    )
+    fig_hist.update_layout(xaxis_tickangle=-45)
+    st.plotly_chart(fig_hist, use_container_width=True)
 
 # === Dispersión hora y minutos ===
 st.header("⏰ Muertes por hora y minutos")
@@ -120,3 +113,12 @@ fig_dispersion = px.scatter(
 )
 fig_dispersion.update_traces(marker=dict(size=5))
 st.plotly_chart(fig_dispersion, use_container_width=True)
+
+# === Barras apiladas por sexo ===
+st.header("🚻 Comparación por sexo y departamento")
+sexo_dep = df.groupby(["DEPARTAMENTO", "SEXO"]).size().reset_index(name="Total")
+fig_apiladas = px.bar(
+    sexo_dep, x="DEPARTAMENTO", y="Total", color="SEXO",
+    title="Muertes por sexo en cada departamento"
+)
+st.plotly_chart(fig_apiladas, use_container_width=True)
