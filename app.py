@@ -54,12 +54,15 @@ muertes_mes = df.groupby("MES").size().reset_index(name="Total")
 fig_line = px.line(muertes_mes, x="MES", y="Total", markers=True, title="Muertes por mes en 2019")
 st.plotly_chart(fig_line, use_container_width=True)
 
-# Gráfico de barras: ciudades más violentas (filtro por texto)
-st.header("🔫 Top 5 ciudades más violentas (mención textual 'arma de fuego')")
-violentas = df[df["Detalle"].str.contains("arma de fuego", case=False, na=False)]
-top5 = violentas["MUNICIPIO"].value_counts().nlargest(5).reset_index()
-top5.columns = ["MUNICIPIO", "Total"]
-fig_violentas = px.bar(top5, x="MUNICIPIO", y="Total", title="Top 5 ciudades más violentas")
+# Gráfico de barras: ciudades más violentas (considerando homicidio, arma de fuego y no especificado)
+st.header("🔫 Top 5 ciudades más violentas (homicidios y similares)")
+cond_homicidio = df["MANERA_MUERTE"].str.upper() == "HOMICIDIO"
+cond_arma_fuego = df["Detalle"].str.contains("arma de fuego", case=False, na=False)
+cond_no_especificado = df["Detalle"].str.contains("no especificado", case=False, na=False)
+violentas = df[cond_homicidio | cond_arma_fuego | cond_no_especificado]
+top5_violentas = violentas["MUNICIPIO"].value_counts().nlargest(5).reset_index()
+top5_violentas.columns = ["MUNICIPIO", "Total"]
+fig_violentas = px.bar(top5_violentas, x="MUNICIPIO", y="Total", title="Top 5 ciudades más violentas")
 st.plotly_chart(fig_violentas, use_container_width=True)
 
 # Gráfico circular: ciudades con menor mortalidad
