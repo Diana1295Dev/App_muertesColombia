@@ -92,6 +92,9 @@ else:
 # === Histograma por edad (quinquenal) ===
 st.header("📊 Histograma de edad (quinquenal)")
 if "GRUPO_EDAD1" in df.columns:
+    # Limpieza y mapeo flexible
+    df["GRUPO_EDAD1_CLEAN"] = df["GRUPO_EDAD1"].str.replace("^0+", "", regex=True).str.strip()
+
     edad_map = {
         "0 a 4": "0-4", "5 a 9": "5-9", "10 a 14": "10-14", "15 a 19": "15-19",
         "20 a 24": "20-24", "25 a 29": "25-29", "30 a 34": "30-34", "35 a 39": "35-39",
@@ -99,10 +102,10 @@ if "GRUPO_EDAD1" in df.columns:
         "60 a 64": "60-64", "65 a 69": "65-69", "70 a 74": "70-74", "75 a 79": "75-79",
         "80 a 84": "80-84", "85 y más": "85+"
     }
-    df["GRUPO_EDAD1"] = df["GRUPO_EDAD1"].replace(edad_map)
 
+    df["EDAD_QUINQUENAL"] = df["GRUPO_EDAD1_CLEAN"].replace(edad_map)
     edad_orden = list(edad_map.values())
-    edad_data = df["GRUPO_EDAD1"].value_counts().reindex(edad_orden, fill_value=0).reset_index()
+    edad_data = df["EDAD_QUINQUENAL"].value_counts().reindex(edad_orden, fill_value=0).reset_index()
     edad_data.columns = ["Rango de Edad", "Número de Muertes"]
 
     if edad_data["Número de Muertes"].sum() > 0:
@@ -146,3 +149,4 @@ if "HORA" in df.columns and "MINUTOS" in df.columns:
     st.plotly_chart(fig_dispersion, use_container_width=True, key="hora_min")
 else:
     st.warning("⚠️ No se pueden mostrar las muertes por hora y minutos.")
+
