@@ -94,13 +94,18 @@ st.header("📊 Histograma de edad (quinquenal)")
 if "GRUPO_EDAD1" in df.columns:
     edad_map = {
         "0 a 4": "0-4", "5 a 9": "5-9", "10 a 14": "10-14", "15 a 19": "15-19",
-        "20 a 24": "20-24", "25 a 29": "25-29"
+        "20 a 24": "20-24", "25 a 29": "25-29", "30 a 34": "30-34", "35 a 39": "35-39",
+        "40 a 44": "40-44", "45 a 49": "45-49", "50 a 54": "50-54", "55 a 59": "55-59",
+        "60 a 64": "60-64", "65 a 69": "65-69", "70 a 74": "70-74", "75 a 79": "75-79",
+        "80 a 84": "80-84", "85 y más": "85+"
     }
     df["GRUPO_EDAD1"] = df["GRUPO_EDAD1"].replace(edad_map)
-    edad_orden = ["0-4", "5-9", "10-14", "15-19", "20-24", "25-29"]
-    edad_data = df["GRUPO_EDAD1"].value_counts().reindex(edad_orden).dropna().reset_index()
+
+    edad_orden = list(edad_map.values())
+    edad_data = df["GRUPO_EDAD1"].value_counts().reindex(edad_orden, fill_value=0).reset_index()
     edad_data.columns = ["Rango de Edad", "Número de Muertes"]
-    if not edad_data.empty:
+
+    if edad_data["Número de Muertes"].sum() > 0:
         fig_hist = px.bar(
             edad_data, x="Rango de Edad", y="Número de Muertes",
             title="Distribución de muertes según grupos quinquenales de edad",
