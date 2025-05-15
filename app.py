@@ -24,20 +24,29 @@ if df.empty:
 # Filtrar año
 df = df[df["AÑO"] == 2019]
 
-# Mapa de muertes por departamento
-st.header("🗺️ Mapa: Muertes por departamento")
-muertes_depto = df.groupby("DEPARTAMENTO").size().reset_index(name="Total Muertes")
-fig_mapa = px.choropleth(
-    muertes_depto,
-    geojson="https://raw.githubusercontent.com/martingrzz/colombia-geojson/master/colombia.geo.json",
-    locations="DEPARTAMENTO",
-    featureidkey="properties.NOMBRE_DPT",
-    color="Total Muertes",
-    color_continuous_scale="Reds",
-    title="Distribución de muertes por departamento"
+# Mapa de burbujas: muertes por departamento con lat/long aproximadas
+st.header("🗺️ Mapa de burbujas: Muertes por departamento")
+deptos_coords = {
+    "ANTIOQUIA": [6.25184, -75.56359], "CUNDINAMARCA": [4.711, -74.0721], "VALLE DEL CAUCA": [3.4516, -76.532],
+    "ATLANTICO": [10.9685, -74.7813], "BOLIVAR": [10.3997, -75.5144], "NARIÑO": [1.2136, -77.2811],
+    "SANTANDER": [7.1193, -73.1227], "NORTE DE SANTANDER": [7.8833, -72.5078], "TOLIMA": [4.4389, -75.2322],
+    "CESAR": [10.4753, -73.2436], "META": [3.9906, -73.7639], "CORDOBA": [8.74798, -75.8814],
+    "MAGDALENA": [10.5911, -74.1864], "CAUCA": [2.44, -76.61]
+}
+burbujas = df.groupby("DEPARTAMENTO").size().reset_index(name="Total Muertes")
+burbujas[["LAT", "LON"]] = burbujas["DEPARTAMENTO"].map(deptos_coords).apply(pd.Series)
+fig_burbujas = px.scatter_mapbox(
+    burbujas,
+    lat="LAT",
+    lon="LON",
+    size="Total Muertes",
+    hover_name="DEPARTAMENTO",
+    size_max=40,
+    zoom=4,
+    mapbox_style="carto-positron",
+    title="Muertes por departamento (tamaño de burbuja proporcional)"
 )
-fig_mapa.update_geos(fitbounds="locations", visible=False)
-st.plotly_chart(fig_mapa, use_container_width=True)
+st.plotly_chart(fig_burbujas, use_container_width=True)
 
 # Gráfico de líneas: muertes por mes
 st.header("📈 Muertes por mes")
@@ -45,12 +54,29 @@ muertes_mes = df.groupby("MES").size().reset_index(name="Total")
 fig_line = px.line(muertes_mes, x="MES", y="Total", markers=True, title="Muertes por mes en 2019")
 st.plotly_chart(fig_line, use_container_width=True)
 
+# Gráfico de barras: ciudades más violentas (filtro por texto)
+st.header("🔫 Top 5 ciudades más violentas (mención textual 'arma de fuego')")
+violentas = df[df["Detalle"].str.contains("arma de fuego", case=False, na=False)]
+top5 = violentas["MUNICIPIO"].value_counts().nlargest(5).reset_index()
+top5.columns = ["MUNICIPIO", "Total"]
+fig_violentas = px.bar(top5, x="MUNICIPIO", y="Total", title="Top 5 ciudades más violentas")
+st.plotly_chart(fig_violentas, use_container_width=True)
+
 # Gráfico circular: ciudades con menor mortalidad
 st.header("🥧 10 ciudades con menor mortalidad")
 menores = df["MUNICIPIO"].value_counts().nsmallest(10).reset_index()
 menores.columns = ["MUNICIPIO", "Total"]
 fig_pie = px.pie(menores, names="MUNICIPIO", values="Total", title="10 ciudades con menor mortalidad")
 st.plotly_chart(fig_pie, use_container_width=True)
+
+# Tabla: principales causas de muerte
+st.header("📋 Top 10 causas de muerte")
+if "Nombre_capitulo" in df.columns:
+    causas = df.groupby("Nombre_capitulo").size().reset_index(name="Total")
+    top_causas = causas.sort_values("Total", ascending=False).head(10)
+    st.dataframe(top_causas)
+else:
+    st.warning("⚠️ La columna 'Nombre_capitulo' no está disponible para mostrar causas.")
 
 # Histograma: distribución por grupo de edad
 st.header("📊 Histograma de edad (quinquenal)")
