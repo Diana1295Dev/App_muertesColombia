@@ -5,7 +5,7 @@ import plotly.express as px
 st.set_page_config(page_title="Análisis de Mortalidad 2019", layout="wide")
 st.title("📊 Análisis de Mortalidad en Colombia - Año 2019")
 
-# Cargar base unificada
+# === Cargar datos ===
 archivo = "Base_Unificada_Limpia_Completa.xlsx"
 
 @st.cache_data
@@ -20,7 +20,7 @@ df = cargar_datos()
 if df.empty:
     st.stop()
 
-# Filtrar solo año 2019
+# === Filtrar por año 2019 ===
 df = df[df["AÑO"] == 2019]
 
 # === Mapa de burbujas ===
@@ -74,8 +74,13 @@ if "Nombre_capitulo" in df.columns:
 else:
     st.warning("⚠️ La columna 'Nombre_capitulo' no está disponible para mostrar causas.")
 
-# === Histograma por edad ===
-st.header("📊 Histograma de edad (quinquenal)")
+# === Histograma mejorado por edad ===
+st.header("📊 Distribución de muertes por grupos quinquenales de edad")
+orden_edad = [
+    "0-4", "5-9", "10-14", "15-19", "20-24", "25-29", "30-34", "35-39",
+    "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "70-74", "75-79",
+    "80-84", "85+"
+]
 edad_map = {
     "0 a 4": "0-4", "5 a 9": "5-9", "10 a 14": "10-14", "15 a 19": "15-19",
     "20 a 24": "20-24", "25 a 29": "25-29", "30 a 34": "30-34", "35 a 39": "35-39",
@@ -84,9 +89,15 @@ edad_map = {
     "80 a 84": "80-84", "85 y más": "85+"
 }
 df["GRUPO_EDAD1"] = df["GRUPO_EDAD1"].replace(edad_map)
-edad_data = df["GRUPO_EDAD1"].value_counts().sort_index().reset_index()
+edad_data = df["GRUPO_EDAD1"].value_counts().reindex(orden_edad, fill_value=0).reset_index()
 edad_data.columns = ["Grupo Edad", "Muertes"]
-fig_hist = px.bar(edad_data, x="Grupo Edad", y="Muertes", title="Distribución de muertes por edad")
+fig_hist = px.bar(
+    edad_data, x="Grupo Edad", y="Muertes",
+    title="Distribución de muertes según grupos quinquenales de edad",
+    labels={"Grupo Edad": "Rango de Edad", "Muertes": "Número de Muertes"},
+    color="Muertes", color_continuous_scale="Blues"
+)
+fig_hist.update_layout(xaxis_tickangle=-45)
 st.plotly_chart(fig_hist, use_container_width=True)
 
 # === Barras apiladas por sexo ===
