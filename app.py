@@ -129,7 +129,7 @@ if "DEPARTAMENTO" in df.columns and "SEXO" in df.columns:
     st.plotly_chart(fig_apiladas, use_container_width=True, key="sexo_departamento")
 else:
     st.warning("⚠️ No se pueden mostrar los datos por sexo y departamento.")
-
+    
 # === Dispersión: hora y minutos de muerte ===
 st.header("⏰ Muertes por hora y minutos")
 if "HORA" in df.columns and "MINUTOS" in df.columns:
