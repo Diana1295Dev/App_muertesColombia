@@ -131,12 +131,24 @@ st.header("🚻 Comparación por sexo y departamento")
 if "DEPARTAMENTO" in df.columns and "SEXO" in df.columns:
     df["SEXO"] = df["SEXO"].astype(str).replace({"1": "Hombre", "2": "Mujer", "3": "Sin identificar"})
     sexo_dep = df.groupby(["DEPARTAMENTO", "SEXO"]).size().reset_index(name="Total")
+
     fig_apiladas = px.bar(
         sexo_dep, x="DEPARTAMENTO", y="Total", color="SEXO",
         title="Muertes por sexo en cada departamento",
-        barmode="stack", labels={"Total": "Número de Muertes"}
+        barmode="stack",
+        labels={"Total": "Número de Muertes", "DEPARTAMENTO": "Departamento"}
     )
-    fig_apiladas.update_layout(xaxis_title="Departamento", yaxis_title="Muertes")
+
+    fig_apiladas.update_layout(
+        xaxis_title="Departamento",
+        yaxis_title="Número de Muertes",
+        xaxis_tickangle=45,
+        legend_title="Sexo",
+        margin=dict(t=40, b=120),
+        height=550
+    )
+
+    fig_apiladas.update_traces(marker_line_width=0.5)
     st.plotly_chart(fig_apiladas, use_container_width=True, key="sexo_departamento")
 else:
     st.warning("⚠️ No se pueden mostrar los datos por sexo y departamento.")
