@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
+import dash
 
 try:
     from streamlit_extras.emoji_rain import rain
@@ -28,7 +29,6 @@ if usar_rain:
 else:
     st.info("🎈 Animación deshabilitada en este entorno.")
 
-# === Menú de navegación con emojis ===
 menu = st.radio("📊 Ir a sección:", [
     "🗺️ Mapa de burbujas",
     "📈 Muertes por mes",
@@ -54,7 +54,6 @@ df = cargar_datos()
 if df.empty:
     st.stop()
 
-# === Filtrar por año 2019 ===
 if "AÑO" not in df.columns:
     st.error("❌ La columna 'AÑO' no está en los datos.")
     st.stop()
