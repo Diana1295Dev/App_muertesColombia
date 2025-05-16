@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
-import dash
 
 # === Configuración general ===
 st.set_page_config(page_title="Análisis de Mortalidad 2019 🇨🇴", layout="wide")
@@ -14,19 +13,9 @@ with col1:
 with col2:
     st.title("Análisis Interactivo de Mortalidad en Colombia - 2019")
     st.markdown(
-        "<span style='color: gray;'>📅 Datos filtrados por año, agrupados y visualizados para comprender tendencias demográficas y geográficas.</span>",
+        "<span style='color: gray;'>🗓️ Datos filtrados por año, agrupados y visualizados para comprender tendencias demográficas y geográficas.</span>",
         unsafe_allow_html=True
     )
-# Menu
-menu = st.radio("📊 Ir a sección:", [
-    "🗺️ Mapa de burbujas",
-    "📈 Muertes por mes",
-    "🔫 Ciudades más violentas",
-    "🥧 Ciudades con menor mortalidad",
-    "📋 Causas de muerte",
-    "📊 Histograma por edad",
-    "🚻 Sexo por departamento"
-], horizontal=True)
 
 # === Cargar base de datos ===
 archivo = os.path.join(os.getcwd(), "Base_Unificada_Limpia_Completa.xlsx")
@@ -43,13 +32,41 @@ df = cargar_datos()
 if df.empty:
     st.stop()
 
-if "AÑO" not in df.columns:
-    st.error("❌ La columna 'AÑO' no está en los datos.")
-    st.stop()
-df = df[df["AÑO"] == 2019]
-#Menu de navegación
-if menu == "🗺️ Mapa de burbujas":
-    st.subheader("🗺️ Mapa de burbujas: Muertes por departamento")
+# === KPIs visuales ===
+st.markdown("### 📌 Indicadores principales")
+
+kpi1 = len(df)
+kpi2 = df["MANERA_MUERTE"].nunique()
+kpi3 = df["SEXO"].replace({1: "Hombre", 2: "Mujer", 3: "Sin identificar"}).value_counts().idxmax()
+kpi4 = df["DEPARTAMENTO"].value_counts().idxmax()
+kpi5 = df["MUNICIPIO"].value_counts().idxmax()
+
+col1, col2, col3, col4, col5 = st.columns(5)
+with col1:
+    st.metric("👥 Personas registradas", f"{kpi1:,}")
+with col2:
+    st.metric("🧬 Tipos de muerte", kpi2)
+with col3:
+    st.metric("🛋️ Sexo con más muertes", kpi3)
+with col4:
+    st.metric("📍 Dpto. con más muertes", kpi4)
+with col5:
+    st.metric("🏙️ Municipio con más muertes", kpi5)
+
+# === Menú de navegación ===
+menu = st.radio("\ud83d\udcca Ir a sección:", [
+    "📽️ Mapa de burbujas",
+    "📈 Muertes por mes",
+    "🔫 Ciudades más violentas",
+    "🥧 Ciudades con menor mortalidad",
+    "📋 Causas de muerte",
+    "📊 Histograma por edad",
+    "🚻 Sexo por departamento"
+], horizontal=True)
+
+# === Visualizaciones ===
+if menu == "📽️ Mapa de burbujas":
+    st.subheader("📽️ Mapa de burbujas: Muertes por departamento")
     deptos_coords = {
         "ANTIOQUIA": [6.25184, -75.56359], "CUNDINAMARCA": [4.711, -74.0721], "VALLE DEL CAUCA": [3.4516, -76.532],
         "ATLANTICO": [10.9685, -74.7813], "BOLIVAR": [10.3997, -75.5144], "NARIÑO": [1.2136, -77.2811],
@@ -76,7 +93,7 @@ elif menu == "📈 Muertes por mes":
         st.warning("⚠️ La columna 'MES' no está disponible.")
 
 elif menu == "🔫 Ciudades más violentas":
-    st.subheader("🔫 Top 5 ciudades más violentas (homicidios o arma de fuego)")
+    st.subheader("🔫 Top 5 ciudades más violentas")
     if all(col in df.columns for col in ["MANERA_MUERTE", "Detalle", "MUNICIPIO"]):
         violentas = df[df["MANERA_MUERTE"].str.contains("homicidio", case=False, na=False) |
                        df["Detalle"].str.contains("arma de fuego", case=False, na=False)]
@@ -110,19 +127,11 @@ elif menu == "📋 Causas de muerte":
 elif menu == "📊 Histograma por edad":
     st.subheader("📊 Histograma de edad (quinquenal)")
     if "GRUPO_EDAD1" in df.columns:
-        edad_map = {
-            0: "0-4", 1: "0-4", 2: "0-4", 3: "0-4", 4: "0-4",
-            5: "5-9", 6: "5-9", 7: "5-9", 8: "5-9", 9: "5-9",
-            10: "10-14", 11: "10-14", 12: "10-14", 13: "10-14", 14: "10-14",
-            15: "15-19", 16: "15-19", 17: "15-19", 18: "15-19", 19: "15-19",
-            20: "20-24", 21: "20-24", 22: "20-24", 23: "20-24", 24: "20-24",
-            25: "25-29", 26: "25-29", 27: "25-29", 28: "25-29", 29: "25-29"
-        }
+        edad_map = {i: f"{5*(i//5)}-{5*(i//5)+4}" for i in range(30)}
         df["EDAD_QUINQUENAL"] = df["GRUPO_EDAD1"].map(edad_map)
-        edad_orden = ["0-4", "5-9", "10-14", "15-19", "20-24", "25-29"]
-        edad_data = df["EDAD_QUINQUENAL"].value_counts().reindex(edad_orden, fill_value=0).reset_index()
-        edad_data.columns = ["Rango de Edad", "Número de Muertes"]
-        fig_hist = px.bar(edad_data, x="Rango de Edad", y="Número de Muertes", color="Número de Muertes",
+        edad_data = df["EDAD_QUINQUENAL"].value_counts().sort_index().reset_index()
+        edad_data.columns = ["Rango de Edad", "Muertes"]
+        fig_hist = px.bar(edad_data, x="Rango de Edad", y="Muertes", color="Muertes",
                           color_continuous_scale="Blues")
         st.plotly_chart(fig_hist, use_container_width=True)
     else:
@@ -133,13 +142,10 @@ elif menu == "🚻 Sexo por departamento":
     if "DEPARTAMENTO" in df.columns and "SEXO" in df.columns:
         df["SEXO"] = df["SEXO"].astype(str).replace({"1": "Hombre", "2": "Mujer", "3": "Sin identificar"})
         sexo_dep = df.groupby(["DEPARTAMENTO", "SEXO"]).size().reset_index(name="Total")
-        fig_apiladas = px.bar(
-            sexo_dep, 
-            x="DEPARTAMENTO", y="Total", color="SEXO", barmode="group",
-            title="Distribución de muertes por sexo y departamento",
-            labels={"DEPARTAMENTO": "Departamento", "Total": "Cantidad de muertes"},
-            color_discrete_sequence=px.colors.qualitative.Set2
-        )
+        fig_apiladas = px.bar(sexo_dep, x="DEPARTAMENTO", y="Total", color="SEXO", barmode="group",
+                              title="Distribución de muertes por sexo y departamento",
+                              labels={"DEPARTAMENTO": "Departamento", "Total": "Cantidad de muertes"},
+                              color_discrete_sequence=px.colors.qualitative.Set2)
         fig_apiladas.update_layout(xaxis_tickangle=45, height=600, bargap=0.25)
         st.plotly_chart(fig_apiladas, use_container_width=True)
     else:
