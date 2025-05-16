@@ -17,9 +17,6 @@ def cargar_datos():
     except FileNotFoundError:
         st.error("❌ No se encuentra el archivo Base_Unificada_Limpia_Completa.xlsx")
         return pd.DataFrame()
-    except Exception as e:
-        st.error(f"❌ Error al cargar el archivo: {e}")
-        return pd.DataFrame()
 
 df = cargar_datos()
 if df.empty:
@@ -40,24 +37,18 @@ deptos_coords = {
     "CESAR": [10.4753, -73.2436], "META": [3.9906, -73.7639], "CORDOBA": [8.74798, -75.8814],
     "MAGDALENA": [10.5911, -74.1864], "CAUCA": [2.44, -76.61]
 }
-if "DEPARTAMENTO" in df.columns:
-    burbujas = df.groupby("DEPARTAMENTO").size().reset_index(name="Total Muertes")
-    burbujas[["LAT", "LON"]] = burbujas["DEPARTAMENTO"].apply(
-        lambda d: pd.Series(deptos_coords.get(d, [None, None]))
-    )
-    burbujas = burbujas.dropna(subset=["LAT", "LON"])
-    if not burbujas.empty:
-        fig_burbujas = px.scatter_mapbox(
-            burbujas, lat="LAT", lon="LON", size="Total Muertes", hover_name="DEPARTAMENTO",
-            size_max=40, zoom=4, mapbox_style="open-street-map",
-            title="Muertes por departamento (tamaño de burbuja proporcional)"
-        )
-        fig_burbujas.update_layout(margin={"r":0,"t":50,"l":0,"b":0})
-        st.plotly_chart(fig_burbujas, use_container_width=True, key="mapa_burbujas")
-    else:
-        st.warning("⚠️ No hay datos de departamentos con coordenadas.")
-else:
-    st.warning("⚠️ La columna 'DEPARTAMENTO' no está disponible.")
+burbujas = df.groupby("DEPARTAMENTO").size().reset_index(name="Total Muertes")
+burbujas[["LAT", "LON"]] = burbujas["DEPARTAMENTO"].apply(
+    lambda d: pd.Series(deptos_coords.get(d, [None, None]))
+)
+burbujas = burbujas.dropna(subset=["LAT", "LON"])
+fig_burbujas = px.scatter_mapbox(
+    burbujas, lat="LAT", lon="LON", size="Total Muertes", hover_name="DEPARTAMENTO",
+    size_max=40, zoom=4, mapbox_style="open-street-map",
+    title="Muertes por departamento (tamaño de burbuja proporcional)"
+)
+fig_burbujas.update_layout(margin={"r":0,"t":50,"l":0,"b":0})
+st.plotly_chart(fig_burbujas, use_container_width=True, key="mapa_burbujas")
 
 # === Gráfico de líneas: muertes por mes ===
 st.header("📈 Muertes por mes")
@@ -77,18 +68,15 @@ else:
 st.header("🔫 Top 5 ciudades más violentas (homicidios o arma de fuego)")
 if all(col in df.columns for col in ["MANERA_MUERTE", "Detalle", "MUNICIPIO"]):
     violentas = df[
-        df["MANERA_MUERTE"].astype(str).str.contains("homicidio", case=False, na=False) |
-        df["Detalle"].astype(str).str.contains("arma de fuego", case=False, na=False)
+        df["MANERA_MUERTE"].str.contains("homicidio", case=False, na=False) |
+        df["Detalle"].str.contains("arma de fuego", case=False, na=False)
     ]
     top5 = violentas["MUNICIPIO"].value_counts().nlargest(5).reset_index()
     top5.columns = ["MUNICIPIO", "Total"]
-    if not top5.empty:
-        fig_violentas = px.bar(top5, x="MUNICIPIO", y="Total", title="Top 5 ciudades más violentas",
-                               color="Total", color_continuous_scale="Reds")
-        fig_violentas.update_layout(xaxis_title="Municipio", yaxis_title="Muertes")
-        st.plotly_chart(fig_violentas, use_container_width=True, key="top_violentas")
-    else:
-        st.warning("⚠️ No hay datos de homicidios o armas de fuego.")
+    fig_violentas = px.bar(top5, x="MUNICIPIO", y="Total", title="Top 5 ciudades más violentas",
+                           color="Total", color_continuous_scale="Reds")
+    fig_violentas.update_layout(xaxis_title="Municipio", yaxis_title="Muertes")
+    st.plotly_chart(fig_violentas, use_container_width=True, key="top_violentas")
 else:
     st.warning("⚠️ Faltan columnas necesarias para calcular ciudades más violentas.")
 
@@ -97,13 +85,10 @@ st.header("🥧 10 ciudades con menor mortalidad")
 if "MUNICIPIO" in df.columns:
     menores = df["MUNICIPIO"].value_counts().nsmallest(10).reset_index()
     menores.columns = ["MUNICIPIO", "Total"]
-    if not menores.empty and menores["Total"].sum() > 0:
-        fig_pie = px.pie(menores, names="MUNICIPIO", values="Total", title="10 ciudades con menor mortalidad",
-                         hole=0.4)
-        fig_pie.update_traces(textposition='inside', textinfo='percent+label')
-        st.plotly_chart(fig_pie, use_container_width=True, key="menor_mortalidad")
-    else:
-        st.warning("⚠️ No hay datos de municipios con baja mortalidad.")
+    fig_pie = px.pie(menores, names="MUNICIPIO", values="Total", title="10 ciudades con menor mortalidad",
+                     hole=0.4)
+    fig_pie.update_traces(textposition='inside', textinfo='percent+label')
+    st.plotly_chart(fig_pie, use_container_width=True, key="menor_mortalidad")
 else:
     st.warning("⚠️ La columna 'MUNICIPIO' no está disponible.")
 
@@ -112,23 +97,23 @@ st.header("📋 Top 10 causas de muerte")
 if "Nombre_capitulo" in df.columns:
     causas = df.groupby("Nombre_capitulo").size().reset_index(name="Total")
     top_causas = causas.sort_values("Total", ascending=False).head(10)
-    st.dataframe(top_causas.style.background_gradient(cmap="Oranges"))
+    st.dataframe(top_causas)
 else:
     st.warning("⚠️ La columna 'Nombre_capitulo' no está disponible.")
 
 # === Histograma por edad (quinquenal) ===
 st.header("📊 Histograma de edad (quinquenal)")
 if "GRUPO_EDAD1" in df.columns:
-    df["GRUPO_EDAD1_CLEAN"] = df["GRUPO_EDAD1"].astype(str).str.replace("^0+", "", regex=True).str.strip()
     edad_map = {
-        "0 a 4": "0-4", "5 a 9": "5-9", "10 a 14": "10-14", "15 a 19": "15-19",
-        "20 a 24": "20-24", "25 a 29": "25-29", "30 a 34": "30-34", "35 a 39": "35-39",
-        "40 a 44": "40-44", "45 a 49": "45-49", "50 a 54": "50-54", "55 a 59": "55-59",
-        "60 a 64": "60-64", "65 a 69": "65-69", "70 a 74": "70-74", "75 a 79": "75-79",
-        "80 a 84": "80-84", "85 y más": "85+"
+        0: "0-4", 1: "0-4", 2: "0-4", 3: "0-4", 4: "0-4",
+        5: "5-9", 6: "5-9", 7: "5-9", 8: "5-9", 9: "5-9",
+        10: "10-14", 11: "10-14", 12: "10-14", 13: "10-14", 14: "10-14",
+        15: "15-19", 16: "15-19", 17: "15-19", 18: "15-19", 19: "15-19",
+        20: "20-24", 21: "20-24", 22: "20-24", 23: "20-24", 24: "20-24",
+        25: "25-29", 26: "25-29", 27: "25-29", 28: "25-29", 29: "25-29"
     }
-    df["EDAD_QUINQUENAL"] = df["GRUPO_EDAD1_CLEAN"].replace(edad_map)
-    edad_orden = list(edad_map.values())
+    df["EDAD_QUINQUENAL"] = df["GRUPO_EDAD1"].map(edad_map)
+    edad_orden = ["0-4", "5-9", "10-14", "15-19", "20-24", "25-29"]
     edad_data = df["EDAD_QUINQUENAL"].value_counts().reindex(edad_orden, fill_value=0).reset_index()
     edad_data.columns = ["Rango de Edad", "Número de Muertes"]
     fig_hist = px.bar(
@@ -146,15 +131,12 @@ st.header("🚻 Comparación por sexo y departamento")
 if "DEPARTAMENTO" in df.columns and "SEXO" in df.columns:
     df["SEXO"] = df["SEXO"].astype(str).replace({"1": "Hombre", "2": "Mujer", "3": "Sin identificar"})
     sexo_dep = df.groupby(["DEPARTAMENTO", "SEXO"]).size().reset_index(name="Total")
-    if not sexo_dep.empty:
-        fig_apiladas = px.bar(
-            sexo_dep, x="DEPARTAMENTO", y="Total", color="SEXO",
-            title="Muertes por sexo en cada departamento",
-            barmode="stack", labels={"Total": "Número de Muertes"}
-        )
-        fig_apiladas.update_layout(xaxis_title="Departamento", yaxis_title="Muertes")
-        st.plotly_chart(fig_apiladas, use_container_width=True, key="sexo_departamento")
-    else:
-        st.warning("⚠️ No hay datos para mostrar la comparación por sexo y departamento.")
+    fig_apiladas = px.bar(
+        sexo_dep, x="DEPARTAMENTO", y="Total", color="SEXO",
+        title="Muertes por sexo en cada departamento",
+        barmode="stack", labels={"Total": "Número de Muertes"}
+    )
+    fig_apiladas.update_layout(xaxis_title="Departamento", yaxis_title="Muertes")
+    st.plotly_chart(fig_apiladas, use_container_width=True, key="sexo_departamento")
 else:
     st.warning("⚠️ No se pueden mostrar los datos por sexo y departamento.")
