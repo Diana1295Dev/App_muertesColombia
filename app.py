@@ -32,7 +32,7 @@ df = cargar_datos()
 if df.empty:
     st.stop()
 
-# === KPIs visuales ===
+# === KPIs visuales con estilo personalizado ===
 st.markdown("### 📌 Indicadores principales")
 
 kpi1 = len(df)
@@ -42,16 +42,31 @@ kpi4 = df["DEPARTAMENTO"].value_counts().idxmax()
 kpi5 = df["DEPARTAMENTO"].value_counts().idxmin()
 
 col1, col2, col3, col4, col5 = st.columns(5)
+
+kpi_style = """
+    <div style="
+        background-color: #f0f2f6;
+        padding: 20px;
+        border-radius: 15px;
+        text-align: center;
+        box-shadow: 2px 2px 6px rgba(0,0,0,0.05);
+        height: 100px;
+    ">
+        <div style="font-size: 16px; color: #666;">{titulo}</div>
+        <div style="font-size: 28px; font-weight: bold; color: #333;">{valor}</div>
+    </div>
+"""
+
 with col1:
-    st.metric("👥 Personas registradas", f"{kpi1:,}")
+    st.markdown(kpi_style.format(titulo="👥 Personas registradas", valor=f"{kpi1:,}"), unsafe_allow_html=True)
 with col2:
-    st.metric("🧬 Tipos de muerte", kpi2)
+    st.markdown(kpi_style.format(titulo="🧬 Tipos de muerte", valor=kpi2), unsafe_allow_html=True)
 with col3:
-    st.metric("🛋️ Sexo con más muertes", kpi3)
+    st.markdown(kpi_style.format(titulo="🛋️ Sexo con más muertes", valor=kpi3), unsafe_allow_html=True)
 with col4:
-    st.metric("📍 Dpto. con más muertes", kpi4)
+    st.markdown(kpi_style.format(titulo="📍 Dpto. con más muertes", valor=kpi4), unsafe_allow_html=True)
 with col5:
-    st.metric("📉 Dpto. con menos muertes", kpi5)
+    st.markdown(kpi_style.format(titulo="📉 Dpto. con menos muertes", valor=kpi5), unsafe_allow_html=True)
 
 # === Menú de navegación ===
 menu = st.radio("📊 Ir a sección:", [
@@ -152,3 +167,4 @@ elif menu == "🚻 Sexo por departamento":
         st.plotly_chart(fig_apiladas, use_container_width=True)
     else:
         st.warning("⚠️ No se pueden mostrar los datos por sexo y departamento.")
+
