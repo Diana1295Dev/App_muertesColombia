@@ -4,16 +4,10 @@ import plotly.express as px
 import os
 import dash
 
-try:
-    from streamlit_extras.emoji_rain import rain
-    usar_rain = True
-except ModuleNotFoundError:
-    usar_rain = False
-
 # === Configuración general ===
 st.set_page_config(page_title="Análisis de Mortalidad 2019 🇨🇴", layout="wide")
 
-# === Encabezado visual llamativo ===
+# === Encabezado ===
 col1, col2 = st.columns([1, 10])
 with col1:
     st.image("https://cdn-icons-png.flaticon.com/512/4474/4474364.png", width=60)
@@ -23,12 +17,7 @@ with col2:
         "<span style='color: gray;'>📅 Datos filtrados por año, agrupados y visualizados para comprender tendencias demográficas y geográficas.</span>",
         unsafe_allow_html=True
     )
-
-if usar_rain:
-    rain(emoji="💀", font_size=20, falling_speed=5, animation_length="infinite")
-else:
-    st.info("🎈 Animación deshabilitada en este entorno.")
-
+# Menu
 menu = st.radio("📊 Ir a sección:", [
     "🗺️ Mapa de burbujas",
     "📈 Muertes por mes",
@@ -144,8 +133,14 @@ elif menu == "🚻 Sexo por departamento":
     if "DEPARTAMENTO" in df.columns and "SEXO" in df.columns:
         df["SEXO"] = df["SEXO"].astype(str).replace({"1": "Hombre", "2": "Mujer", "3": "Sin identificar"})
         sexo_dep = df.groupby(["DEPARTAMENTO", "SEXO"]).size().reset_index(name="Total")
-        fig_apiladas = px.bar(sexo_dep, x="DEPARTAMENTO", y="Total", color="SEXO", barmode="stack")
-        fig_apiladas.update_layout(xaxis_tickangle=45, height=550)
+        fig_apiladas = px.bar(
+            sexo_dep, 
+            x="DEPARTAMENTO", y="Total", color="SEXO", barmode="group",
+            title="Distribución de muertes por sexo y departamento",
+            labels={"DEPARTAMENTO": "Departamento", "Total": "Cantidad de muertes"},
+            color_discrete_sequence=px.colors.qualitative.Set2
+        )
+        fig_apiladas.update_layout(xaxis_tickangle=45, height=600, bargap=0.25)
         st.plotly_chart(fig_apiladas, use_container_width=True)
     else:
         st.warning("⚠️ No se pueden mostrar los datos por sexo y departamento.")
