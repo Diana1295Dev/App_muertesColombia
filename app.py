@@ -39,7 +39,7 @@ kpi1 = len(df)
 kpi2 = df["MANERA_MUERTE"].nunique()
 kpi3 = df["SEXO"].replace({1: "Hombre", 2: "Mujer", 3: "Sin identificar"}).value_counts().idxmax()
 kpi4 = df["DEPARTAMENTO"].value_counts().idxmax()
-kpi5 = df["MUNICIPIO"].value_counts().idxmax()
+kpi5 = df["DEPARTAMENTO"].value_counts().idxmin()
 
 col1, col2, col3, col4, col5 = st.columns(5)
 with col1:
@@ -51,10 +51,10 @@ with col3:
 with col4:
     st.metric("📍 Dpto. con más muertes", kpi4)
 with col5:
-    st.metric("🏙️ Municipio con más muertes", kpi5)
+    st.metric("📉 Dpto. con menos muertes", kpi5)
 
 # === Menú de navegación ===
-menu = st.radio("\ud83d\udcca Ir a sección:", [
+menu = st.radio("📊 Ir a sección:", [
     "📽️ Mapa de burbujas",
     "📈 Muertes por mes",
     "🔫 Ciudades más violentas",
@@ -77,15 +77,16 @@ if menu == "📽️ Mapa de burbujas":
     burbujas = df.groupby("DEPARTAMENTO").size().reset_index(name="Total Muertes")
     burbujas[["LAT", "LON"]] = burbujas["DEPARTAMENTO"].apply(lambda d: pd.Series(deptos_coords.get(d, [None, None])))
     burbujas = burbujas.dropna()
-    fig_burbujas = px.scatter_mapbox(burbujas, lat="LAT", lon="LON", size="Total Muertes", hover_name="DEPARTAMENTO",
-                                     zoom=4, size_max=40, mapbox_style="open-street-map")
+    fig_burbujas = px.scatter_mapbox(
+        burbujas, lat="LAT", lon="LON", size="Total Muertes", hover_name="DEPARTAMENTO",
+        zoom=4, size_max=40, mapbox_style="open-street-map")
     st.plotly_chart(fig_burbujas, use_container_width=True)
 
 elif menu == "📈 Muertes por mes":
     st.subheader("📈 Distribución mensual de muertes")
     if "MES" in df.columns:
         muertes_mes = df.groupby("MES").size().reset_index(name="Total")
-        muertes_mes["MES"] = pd.Categorical(muertes_mes["MES"], categories=range(1,13), ordered=True)
+        muertes_mes["MES"] = pd.Categorical(muertes_mes["MES"], categories=range(1, 13), ordered=True)
         muertes_mes = muertes_mes.sort_values("MES")
         fig_line = px.line(muertes_mes, x="MES", y="Total", markers=True)
         st.plotly_chart(fig_line, use_container_width=True)
@@ -142,10 +143,11 @@ elif menu == "🚻 Sexo por departamento":
     if "DEPARTAMENTO" in df.columns and "SEXO" in df.columns:
         df["SEXO"] = df["SEXO"].astype(str).replace({"1": "Hombre", "2": "Mujer", "3": "Sin identificar"})
         sexo_dep = df.groupby(["DEPARTAMENTO", "SEXO"]).size().reset_index(name="Total")
-        fig_apiladas = px.bar(sexo_dep, x="DEPARTAMENTO", y="Total", color="SEXO", barmode="group",
-                              title="Distribución de muertes por sexo y departamento",
-                              labels={"DEPARTAMENTO": "Departamento", "Total": "Cantidad de muertes"},
-                              color_discrete_sequence=px.colors.qualitative.Set2)
+        fig_apiladas = px.bar(
+            sexo_dep, x="DEPARTAMENTO", y="Total", color="SEXO", barmode="group",
+            title="Distribución de muertes por sexo y departamento",
+            labels={"DEPARTAMENTO": "Departamento", "Total": "Cantidad de muertes"},
+            color_discrete_sequence=px.colors.qualitative.Set2)
         fig_apiladas.update_layout(xaxis_tickangle=45, height=600, bargap=0.25)
         st.plotly_chart(fig_apiladas, use_container_width=True)
     else:
