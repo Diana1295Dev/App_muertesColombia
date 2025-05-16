@@ -167,4 +167,3 @@ elif menu == "🚻 Sexo por departamento":
         st.plotly_chart(fig_apiladas, use_container_width=True)
     else:
         st.warning("⚠️ No se pueden mostrar los datos por sexo y departamento.")
-
