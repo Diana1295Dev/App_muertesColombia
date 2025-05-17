@@ -283,7 +283,7 @@ def update_content(tab, depto, causa):
 app = Dash(__name__)
 # … aquí va toda tu configuración, layout y callbacks …
 
+
 if __name__ == "__main__":
-    import os
-    port = int(os.environ.get("PORT", 8050))  # 8050 para local, Render inyecta su propio PORT
+    port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, debug=True)
