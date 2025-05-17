@@ -280,7 +280,10 @@ def update_content(tab, depto, causa):
         return render_sexo(df)
     return html.Div("Seleccione una pestaña")
 
+app = Dash(__name__)
+# … aquí va toda tu configuración, layout y callbacks …
+
 if __name__ == "__main__":
     import os
-    port = int(os.environ.get("PORT", 8050))  # 8050 es el puerto por defecto si no hay variable PORT
+    port = int(os.environ.get("PORT", 8050))  # 8050 para local, Render inyecta su propio PORT
     app.run(host="0.0.0.0", port=port, debug=True)
