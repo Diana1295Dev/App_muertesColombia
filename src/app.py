@@ -286,5 +286,10 @@ def update_content(tab, depto, causa):
 flask_app = Flask(__name__)
 app = Dash(__name__, server=flask_app, url_base_pathname='/')
 
-# al final del archivo:
-server = app.server  # esto es lo que gunicorn necesita
+app.title = "Análisis de Mortalidad 2019 🇨🇴"
+server = app.server
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8050))
+    app.run_server(host="0.0.0.0", port=port, debug=False)
+
