@@ -45,154 +45,22 @@ kpis = compute_kpis(df_raw)
 dpto_options = [{"label": d, "value": d} for d in sorted(df_raw["DEPARTAMENTO"].dropna().astype(str).unique())]
 causa_options = [{"label": c, "value": c} for c in sorted(df_raw.get("Nombre_capitulo", pd.Series(dtype=str)).dropna().unique())]
 
+# --- Instancia Flask y Dash ---
 flask_app = Flask(__name__)
 app = Dash(__name__, server=flask_app, url_base_pathname='/')
 app.title = "Análisis de Mortalidad 2019 🇨🇴"
 server = app.server
 
-def kpi_card(title: str, value: str) -> html.Div:
-    return html.Div([
-        html.Div(title, style={"fontSize": "16px", "color": "#666"}),
-        html.Div(value, style={"fontSize": "28px", "fontWeight": "bold"}),
-    ], style={
-        "backgroundColor": "#f0f2f6", "padding": "20px", "borderRadius": "15px",
-        "textAlign": "center", "boxShadow": "2px 2px 6px rgba(0,0,0,0.05)",
-        "flex": "1 1 18%", "minWidth": "180px"
-    })
-
+# --- Layout simple para verificar despliegue exitoso ---
 app.layout = html.Div([
-    html.Header([
-        html.Img(src="https://cdn-icons-png.flaticon.com/512/4474/4474364.png", style={"width": "60px"}),
-        html.H1("Análisis Interactivo de Mortalidad en Colombia - 2019", style={"marginLeft": "10px"}),
-    ], style={"display": "flex", "alignItems": "center", "padding": "20px"}),
-
-    html.Div([
-        html.H3("📌 Indicadores principales"),
-        html.Div([
-            kpi_card("👥 Personas registradas", f"{kpis['total_registros']:,}"),
-            kpi_card("🧬 Tipos de muerte", str(kpis['tipos_muerte'])),
-            kpi_card("🛌 Sexo con más muertes", kpis['sexo_max']),
-            kpi_card("📍 Dpto. con más muertes", kpis['dpto_max']),
-            kpi_card("📉 Dpto. con menos muertes", kpis['dpto_min']),
-        ], style={"display": "flex", "justifyContent": "space-around", "gap": "40px", "padding": "10px 20px", "flexWrap": "nowrap", "overflowX": "auto"})
-    ], style={"padding": "0 20px"}),
-
-    html.Div([
-        html.Div([
-            html.Label("Filtrar por Departamento:"),
-            dcc.Dropdown(id="filter-depto", options=dpto_options, placeholder="Selecciona departamento", clearable=True)
-        ], style={"width": "30%", "display": "inline-block", "padding": "10px"}),
-        html.Div([
-            html.Label("Filtrar por Causa:"),
-            dcc.Dropdown(id="filter-causa", options=causa_options, placeholder="Selecciona causa", clearable=True)
-        ], style={"width": "30%", "display": "inline-block", "padding": "10px"}),
-    ], style={"padding": "0 20px"}),
-
-    dcc.Tabs(id="tabs", value="mapa", children=[
-        dcc.Tab(label="🎮 Mapa de burbujas", value="mapa"),
-        dcc.Tab(label="📈 Muertes por mes", value="mes"),
-        dcc.Tab(label="🔫 Ciudades más violentas", value="violentas"),
-        dcc.Tab(label="🥧 Ciudades con menor mortalidad", value="menor"),
-        dcc.Tab(label="📋 Causas de muerte", value="causas"),
-        dcc.Tab(label="📊 Histograma por edad", value="edad"),
-        dcc.Tab(label="🛋 Sexo por departamento", value="sexo"),
-    ], style={"padding": "20px"}),
-
-    html.Div(id="contenido", style={"padding": "0 20px 20px 20px"})
+    html.H1("Aplicación de Mortalidad 2019 en Colombia"),
+    html.H3("¡La app está desplegada exitosamente en Render! 🎉"),
+    html.P("Registros cargados: {:,}".format(kpis['total_registros'])),
+    html.P("Sexo con más muertes: {}".format(kpis['sexo_max'])),
+    html.P("Departamento con más muertes: {}".format(kpis['dpto_max']))
 ])
 
-def filter_df(depto, causa):
-    df = df_raw.copy()
-    if depto:
-        df = df[df["DEPARTAMENTO"] == depto]
-    if causa:
-        df = df[df["Nombre_capitulo"] == causa]
-    return df
-
-def render_map(df):
-    data = (
-        df.groupby("DEPARTAMENTO").size().reset_index(name="Total Muertes")
-        .assign(
-            LAT=lambda d: d["DEPARTAMENTO"].map(lambda x: DEPT_COORDS.get(x, (None, None))[0]),
-            LON=lambda d: d["DEPARTAMENTO"].map(lambda x: DEPT_COORDS.get(x, (None, None))[1])
-        ).dropna()
-    )
-    fig = px.scatter_mapbox(
-        data, lat="LAT", lon="LON", size="Total Muertes",
-        hover_name="DEPARTAMENTO", zoom=4, size_max=40,
-        mapbox_style="open-street-map"
-    )
-    return dcc.Graph(figure=fig)
-
-def render_mes(df):
-    df_fecha = df.copy()
-    df_fecha["FECHA"] = pd.to_datetime(dict(year=df_fecha["AÑO"], month=df_fecha["MES"], day=1))
-    df_mes = df_fecha.groupby("FECHA").size().reset_index(name="Total Muertes")
-    fig = px.line(df_mes, x="FECHA", y="Total Muertes", markers=True, title="Muertes por mes en Colombia - 2019")
-    return dcc.Graph(figure=fig)
-
-def render_violentas(df):
-    df_homicidio = df[df["MANERA_MUERTE"] == "Homicidio"]
-    df_homicidio = df_homicidio[df_homicidio["MUNICIPIO"].notna()]
-    if df_homicidio.empty:
-        return html.Div("No hay datos disponibles para mostrar homicidios.")
-    data = df_homicidio["MUNICIPIO"].value_counts().nlargest(10).reset_index()
-    data.columns = ["Municipio", "Muertes"]
-    fig = px.bar(data, x="Municipio", y="Muertes", title="10 municipios más violentos (HOMICIDIO)")
-    return dcc.Graph(figure=fig)
-
-def render_menor(df):
-    df_filtered = df[df["MUNICIPIO"].notna()]
-    if df_filtered.empty:
-        return html.Div("No hay datos disponibles para mostrar.")
-    conteo = df_filtered["MUNICIPIO"].value_counts().reset_index()
-    conteo.columns = ["Municipio", "Muertes"]
-    conteo = conteo.sort_values("Muertes", ascending=True).head(10)
-    fig = px.pie(conteo, names="Municipio", values="Muertes", hole=0.4,
-                 title="🕊️ Municipios con menor mortalidad (todas las causas)",
-                 color_discrete_sequence=px.colors.sequential.Tealgrn)
-    return dcc.Graph(figure=fig)
-
-def render_causas(df):
-    data = df["Nombre_capitulo"].value_counts().reset_index()
-    data.columns = ["Causa", "Cantidad"]
-    return html.Table([
-        html.Thead([html.Tr([html.Th("Causa"), html.Th("Cantidad")])]),
-        html.Tbody([html.Tr([html.Td(row["Causa"]), html.Td(f"{row['Cantidad']:,}")]) for _, row in data.iterrows()])
-    ])
-
-def render_edad(df):
-    fig = px.histogram(df, x="GRUPO_EDAD1", nbins=20, opacity=0.8,
-                       title="Distribución de muertes por grupos de edad",
-                       color_discrete_sequence=["#636EFA"])
-    return dcc.Graph(figure=fig)
-
-def render_sexo(df):
-    df_sexo = df.copy()
-    df_sexo["SEXO"] = df_sexo["SEXO"].replace({1: "Hombre", 2: "Mujer", 3: "Sin identificar"})
-    data = df_sexo.groupby(["DEPARTAMENTO", "SEXO"]).size().reset_index(name="Cantidad")
-    fig = px.bar(data, y="DEPARTAMENTO", x="Cantidad", color="SEXO",
-                 title="Distribución de muertes por sexo y departamento",
-                 orientation='h')
-    return dcc.Graph(figure=fig)
-
-@app.callback(
-    Output("contenido", "children"),
-    Input("tabs", "value"),
-    Input("filter-depto", "value"),
-    Input("filter-causa", "value")
-)
-def update_content(tab, depto, causa):
-    df = filter_df(depto, causa)
-    if tab == "mapa": return render_map(df)
-    elif tab == "mes": return render_mes(df)
-    elif tab == "violentas": return render_violentas(df)
-    elif tab == "menor": return render_menor(df)
-    elif tab == "causas": return render_causas(df)
-    elif tab == "edad": return render_edad(df)
-    elif tab == "sexo": return render_sexo(df)
-    return html.Div("Seleccione una pestaña")
-
+# --- Ejecutar ---
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8050))
     app.run_server(host="0.0.0.0", port=port, debug=False)
