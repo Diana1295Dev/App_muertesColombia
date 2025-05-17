@@ -1,0 +1,25 @@
+<<<<<<< HEAD
+services:
+  - type: web
+    name: app-muertes-colombia
+    runtime: python
+    repo: https://github.com/Diana1295Dev/App_muertesColombia.git
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn src.app:server
+    envVars:
+      - key: PORT
+        value: 10000
+=======
+services:
+  - type: web
+    name: app-muertes-colombia
+    runtime: python
+    repo: https://github.com/Diana1295Dev/App_muertesColombia.git
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn src.app:server
+    envVars:
+      - key: PORT
+        value: 10000
+>>>>>>> 20194a093782c050b4f4fe71c906e86156e3af6c
