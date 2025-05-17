@@ -280,11 +280,3 @@ def update_content(tab, depto, causa):
     elif tab == "sexo":
         return render_sexo(df)
     return html.Div("Seleccione una pestaña")
-
-app = Dash(__name__)
-# … aquí va toda tu configuración, layout y callbacks …
-
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port, debug=True)
