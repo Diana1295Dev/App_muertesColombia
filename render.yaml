@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: dash-app
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:server
+    envVars:
+      - name: DASH_APP
+        value: dash-app
+      - name: DASH_ENV
+        value: production
+      - name: DASH_PORT
+        value: 8050
+      - name: DASH_HOST  
