@@ -12,6 +12,7 @@ def load_data(path: str) -> pd.DataFrame:
         raise FileNotFoundError(f"Archivo no encontrado: {path}")
     return pd.read_excel(path)
 
+
 def compute_kpis(df: pd.DataFrame) -> dict:
     sexo_map = {1: "Hombre", 2: "Mujer", 3: "Sin identificar"}
     df_sexo = df.replace({"SEXO": sexo_map})
