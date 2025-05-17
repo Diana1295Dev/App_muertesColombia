@@ -11,4 +11,4 @@ services:
         value: production
       - name: DASH_PORT
         value: 8050
-      - name: DASH_HOST  
+      - name: DASH_HOST   
