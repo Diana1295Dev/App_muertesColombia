@@ -281,4 +281,6 @@ def update_content(tab, depto, causa):
     return html.Div("Seleccione una pestaña")
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    import os
+    port = int(os.environ.get("PORT", 8050))  # 8050 es el puerto por defecto si no hay variable PORT
+    app.run(host="0.0.0.0", port=port, debug=True)
