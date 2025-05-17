@@ -283,16 +283,8 @@ def update_content(tab, depto, causa):
         return render_sexo(df)
     return html.Div("Seleccione una pestaña")
 
-# 1. Crear la app Flask
-flask_app = Flask(__name__)
-
-# 2. Crear la app Dash, pasándole el servidor Flask
-app = Dash(__name__, server=flask_app, url_base_pathname='/dash/')
-
-# 3. Definir layout y callbacks de Dash
-app.layout = html.Div("Hola, Dash dentro de Flask!")
-
-# 4. Ejecutar Flask (el servidor principal)
-if __name__ == "__main__":
-    flask_app.run(debug=True)
+# Este bloque se asegura que se use el puerto que Render asigna dinámicamente
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 10000))  # Render usa 10000 por defecto
+    app.run_server(host="0.0.0.0", port=port)
 
