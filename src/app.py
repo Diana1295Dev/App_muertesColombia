@@ -2,6 +2,8 @@ import os
 import pandas as pd
 import plotly.express as px
 from dash import Dash, dcc, html, Input, Output
+from flask import Flask
+
 
 # --- Configuración de rutas y carga de datos ---
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -281,5 +283,16 @@ def update_content(tab, depto, causa):
         return render_sexo(df)
     return html.Div("Seleccione una pestaña")
 
-if __name__ == '__main__':
-    app.run(debug=True)
+# 1. Crear la app Flask
+flask_app = Flask(__name__)
+
+# 2. Crear la app Dash, pasándole el servidor Flask
+app = Dash(__name__, server=flask_app, url_base_pathname='/dash/')
+
+# 3. Definir layout y callbacks de Dash
+app.layout = html.Div("Hola, Dash dentro de Flask!")
+
+# 4. Ejecutar Flask (el servidor principal)
+if __name__ == "__main__":
+    flask_app.run(debug=True)
+
