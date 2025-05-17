@@ -24,9 +24,7 @@ def compute_kpis(df: pd.DataFrame) -> dict:
         "dpto_min": df["DEPARTAMENTO"].value_counts().idxmin(),
     }
 
-# Coordenadas de departamentos de Colombia
-DEPT_COORDS = {
-    "AMAZONAS": (-1.4419, -70.1449), "ANTIOQUIA": (6.2518, -75.5636), "ARAUCA": (7.0856, -70.7591),
+DEPT_COORDS = { "AMAZONAS": (-1.4419, -70.1449), "ANTIOQUIA": (6.2518, -75.5636), "ARAUCA": (7.0856, -70.7591),
     "ATLÁNTICO": (10.9685, -74.7813), "BOLÍVAR": (10.3910, -75.4794), "BOYACÁ": (5.4545, -73.3620),
     "CALDAS": (5.0703, -75.5138), "CAQUETÁ": (0.8699, -73.8419), "CASANARE": (5.3548, -71.9269),
     "CAUCA": (2.4411, -76.6063), "CESAR": (9.3373, -73.6536), "CHOCÓ": (5.6947, -76.6612),
@@ -42,27 +40,106 @@ DEPT_COORDS = {
 df_raw = load_data(DATA_FILE)
 kpis = compute_kpis(df_raw)
 
-dpto_options = [{"label": d, "value": d} for d in sorted(df_raw["DEPARTAMENTO"].dropna().astype(str).unique())]
-causa_options = [{"label": c, "value": c} for c in sorted(df_raw.get("Nombre_capitulo", pd.Series(dtype=str)).dropna().unique())]
+dpto_options = [{"label": d, "value": d} for d in sorted(df_raw["DEPARTAMENTO"].dropna().unique())]
+causa_options = [{"label": c, "value": c} for c in sorted(df_raw["Nombre_capitulo"].dropna().unique())]
 
-# --- Instancia Flask y Dash ---
 flask_app = Flask(__name__)
 app = Dash(__name__, server=flask_app, url_base_pathname='/')
-app.title = "Análisis de Mortalidad 2019 🇨🇴"
 server = app.server
+app.title = "Análisis de Mortalidad 2019 🇰🇪"
 
-# --- Layout simple para verificar despliegue exitoso ---
 app.layout = html.Div([
-    html.H1("Aplicación de Mortalidad 2019 en Colombia"),
-    html.H3("¡La app está desplegada exitosamente en Render! 🎉"),
-    html.P("Registros cargados: {:,}".format(kpis['total_registros'])),
-    html.P("Sexo con más muertes: {}".format(kpis['sexo_max'])),
-    html.P("Departamento con más muertes: {}".format(kpis['dpto_max']))
+    html.H1("Dashboard de Mortalidad Colombia 2019"),
+    dcc.Dropdown(id="filter-depto", options=dpto_options, placeholder="Selecciona Departamento"),
+    dcc.Dropdown(id="filter-causa", options=causa_options, placeholder="Selecciona Causa"),
+    dcc.Tabs(id="tabs", value="mapa", children=[
+        dcc.Tab(label="Mapa", value="mapa"),
+        dcc.Tab(label="Muertes por Mes", value="mes"),
+        dcc.Tab(label="Municipios Violentos", value="violentas"),
+        dcc.Tab(label="Menor Mortalidad", value="menor"),
+        dcc.Tab(label="Causas", value="causas"),
+        dcc.Tab(label="Edad", value="edad"),
+        dcc.Tab(label="Sexo", value="sexo")
+    ]),
+    html.Div(id="contenido")
 ])
 
-# --- Ejecutar ---
+def filter_df(depto, causa):
+    df = df_raw.copy()
+    if depto:
+        df = df[df["DEPARTAMENTO"] == depto]
+    if causa:
+        df = df[df["Nombre_capitulo"] == causa]
+    return df
+
+def render_map(df):
+    data = df.groupby("DEPARTAMENTO").size().reset_index(name="Total Muertes")
+    data["LAT"] = data["DEPARTAMENTO"].map(lambda x: DEPT_COORDS.get(x, (None, None))[0])
+    data["LON"] = data["DEPARTAMENTO"].map(lambda x: DEPT_COORDS.get(x, (None, None))[1])
+    data = data.dropna()
+    fig = px.scatter_mapbox(data, lat="LAT", lon="LON", size="Total Muertes",
+                            hover_name="DEPARTAMENTO", zoom=4, size_max=40,
+                            mapbox_style="open-street-map")
+    return dcc.Graph(figure=fig)
+
+def render_mes(df):
+    df["FECHA"] = pd.to_datetime(dict(year=df["AÑO"], month=df["MES"], day=1))
+    df_mes = df.groupby("FECHA").size().reset_index(name="Total Muertes")
+    fig = px.line(df_mes, x="FECHA", y="Total Muertes", markers=True)
+    return dcc.Graph(figure=fig)
+
+def render_violentas(df):
+    df_h = df[df["MANERA_MUERTE"] == "Homicidio"]
+    df_h = df_h[df_h["MUNICIPIO"].notna()]
+    if df_h.empty:
+        return html.Div("Sin datos de homicidios")
+    data = df_h["MUNICIPIO"].value_counts().nlargest(10).reset_index()
+    data.columns = ["Municipio", "Muertes"]
+    fig = px.bar(data, x="Municipio", y="Muertes")
+    return dcc.Graph(figure=fig)
+
+def render_menor(df):
+    df_filtered = df[df["MUNICIPIO"].notna()]
+    conteo = df_filtered["MUNICIPIO"].value_counts().reset_index().sort_values("count", ascending=True).head(10)
+    conteo.columns = ["Municipio", "Muertes"]
+    fig = px.pie(conteo, names="Municipio", values="Muertes", hole=0.4)
+    return dcc.Graph(figure=fig)
+
+def render_causas(df):
+    data = df["Nombre_capitulo"].value_counts().reset_index()
+    data.columns = ["Causa", "Cantidad"]
+    return html.Table([
+        html.Thead(html.Tr([html.Th("Causa"), html.Th("Cantidad")])),
+        html.Tbody([html.Tr([html.Td(row["Causa"]), html.Td(row["Cantidad"])]) for _, row in data.iterrows()])
+    ])
+
+def render_edad(df):
+    fig = px.histogram(df, x="GRUPO_EDAD1", nbins=20)
+    return dcc.Graph(figure=fig)
+
+def render_sexo(df):
+    df["SEXO"] = df["SEXO"].replace({1: "Hombre", 2: "Mujer", 3: "Sin identificar"})
+    data = df.groupby(["DEPARTAMENTO", "SEXO"]).size().reset_index(name="Cantidad")
+    fig = px.bar(data, y="DEPARTAMENTO", x="Cantidad", color="SEXO", orientation="h")
+    return dcc.Graph(figure=fig)
+
+@app.callback(
+    Output("contenido", "children"),
+    Input("tabs", "value"),
+    Input("filter-depto", "value"),
+    Input("filter-causa", "value"),
+)
+def update_content(tab, depto, causa):
+    df = filter_df(depto, causa)
+    if tab == "mapa": return render_map(df)
+    elif tab == "mes": return render_mes(df)
+    elif tab == "violentas": return render_violentas(df)
+    elif tab == "menor": return render_menor(df)
+    elif tab == "causas": return render_causas(df)
+    elif tab == "edad": return render_edad(df)
+    elif tab == "sexo": return render_sexo(df)
+    return html.Div("Seleccione una pestaña")
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8050))
     app.run_server(host="0.0.0.0", port=port, debug=False)
-
-
