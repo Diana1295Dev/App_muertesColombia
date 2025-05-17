@@ -12,7 +12,9 @@ DATA_FILE = os.path.join(BASE_DIR, "src", "Base_Unificada_Limpia_Completa.csv")
 def load_data(path: str) -> pd.DataFrame:
     if not os.path.exists(path):
         raise FileNotFoundError(f"Archivo no encontrado: {path}")
-    return pd.read_csv(path, encoding='latin-1')
+    
+    # Intentamos leer detectando automáticamente el delimitador y con codificación compatible
+    return pd.read_csv(path, encoding='latin-1', sep=';', engine='python')
 
 
 def compute_kpis(df: pd.DataFrame) -> dict:
