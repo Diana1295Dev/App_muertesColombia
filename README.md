@@ -54,7 +54,7 @@ La aplicación está compuesta por las siguientes secciones:
 📁 Estructura del Repositorio
 
 📦 APP_MUERTESCOL/
-├── 📂 env/ # Entorno virtual (no se sube al repositorio)
+
 ├── 📂 src/ # Código fuente de la aplicación
 │ ├── 📄 app.py # Aplicación principal construida con Dash
 │ ├── 📄 etl_procesamiento.py # Script para limpieza y transformación de datos
